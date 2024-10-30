@@ -44,7 +44,11 @@ The data we're working with is in the openintro package and it's called `hfi`, s
 
 1.  What are the dimensions of the dataset?
 
-**Insert your answer here**
+**The dataset has 123 columns and 1,458 records**
+```{r}
+glimpse(hfi)
+```
+
 
 2.  What type of plot would you use to display the relationship between the personal
     freedom score, `pf_score`, and one of the other numerical variables? Plot 
@@ -54,7 +58,12 @@ The data we're working with is in the openintro package and it's called `hfi`, s
     controls on media content, would you be comfortable using a linear model to
     predict the personal freedom score?
 
-**Insert your answer here**
+**A scatterplot would be ideal to visualize two numerical dimensions. A linear model makes sense here because the given the variability is roughly the same and there is a linear trend visible to the eye.**
+```{r}
+ggplot(hfi, aes(x=pf_expression_control, y=pf_score))+
+  geom_point()
+```
+
 
 If the relationship looks linear, we can quantify the strength of the relationship with the correlation coefficient.
 
@@ -77,14 +86,58 @@ Think back to the way that we described the distribution of a single variable. R
     between these two variables. Make sure to discuss the form, direction, and 
     strength of the relationship as well as any unusual observations.
 
-**Insert your answer here**
+**The relationship is positive and moderately strong. The variability (spread) of the relationship is a bit wide. We can also observe some outliers, specifically in the bottom left quadrant.**
+
 
 Just as you've used the mean and standard deviation to summarize a single variable, you can summarize the relationship between these two variables by finding the line that best follows their association. Use the following interactive function to select the line that you think does the best job of going through the cloud of points.
+
+```{r}
+plot_ss <- function(x, y, showSquares = FALSE, leastSquares = FALSE){
+  plot(y~x, asp = 1)# xlab = paste(substitute(x)), ylab = paste(substitute(y)))
+
+  if(leastSquares){
+    m1 <- lm(y~x)
+    y.hat <- m1$fit
+  } else{
+    cat("Click two points to make a line.")
+    pt1 <- locator(1)
+    points(pt1$x, pt1$y, pch = 4)
+    pt2 <- locator(1)
+    points(pt2$x, pt2$y, pch = 4)
+    pts <- data.frame("x" = c(pt1$x, pt2$x),"y" = c(pt1$y, pt2$y))
+    m1 <- lm(y ~ x, data = pts)
+    y.hat <- predict(m1, newdata = data.frame(x))
+  }
+  r <- y - y.hat
+  abline(m1)
+
+  oSide <- x - r
+  LLim <- par()$usr[1]
+  RLim <- par()$usr[2]
+  oSide[oSide < LLim | oSide > RLim] <- c(x + r)[oSide < LLim | oSide > RLim] # move boxes to avoid margins
+
+  n <- length(y.hat)
+  for(i in 1:n){
+    lines(rep(x[i], 2), c(y[i], y.hat[i]), lty = 2, col = "blue")
+    if(showSquares){
+    lines(rep(oSide[i], 2), c(y[i], y.hat[i]), lty = 3, col = "orange")
+    lines(c(oSide[i], x[i]), rep(y.hat[i],2), lty = 3, col = "orange")
+    lines(c(oSide[i], x[i]), rep(y[i],2), lty = 3, col = "orange")
+    }
+  }
+
+  SS <- round(sum(r^2), 3)
+  cat("\r                                ")
+  print(m1)
+  cat("Sum of Squares: ", SS)
+}
+```
+
 
 ```{r plotss-expression-score, eval=FALSE}
 # This will only work interactively (i.e. will not show in the knitted document)
 hfi <- hfi %>% filter(complete.cases(pf_expression_control, pf_score))
-DATA606::plot_ss(x = hfi$pf_expression_control, y = hfi$pf_score)
+plot_ss(x = hfi$pf_expression_control, y = hfi$pf_score)
 ```
 
 After running this command, you'll be prompted to click two points on the plot to define a line. Once you've done that, the line you specified will be shown in black and the residuals in blue. Note that there are 30 residuals, one for each of the 30 observations. Recall that the residuals are the difference between the observed values and the values predicted by the line:
@@ -95,8 +148,10 @@ After running this command, you'll be prompted to click two points on the plot t
 
 The most common way to do linear regression is to select the line that minimizes the sum of squared residuals. To visualize the squared residuals, you can rerun the plot command and add the argument `showSquares = TRUE`.
 
+
+
 ```{r plotss-expression-score-squares, eval=FALSE}
-DATA606::plot_ss(x = hfi$pf_expression_control, y = hfi$pf_score, showSquares = TRUE)
+plot_ss(x = hfi$pf_expression_control, y = hfi$pf_score, showSquares = TRUE)
 ```
 
 Note that the output from the `plot_ss` function provides you with the slope and intercept of your line as well as the sum of squares.
@@ -105,7 +160,7 @@ Note that the output from the `plot_ss` function provides you with the slope and
     squares. Run the function several times. What was the smallest sum of 
     squares that you got? How does it compare to your neighbors?
 
-**Insert your answer here**
+**The best fit I got was a sum of squares of 1001.181 with coefficients 4.7552 and 0.4375**
 
 ## The linear model
 
@@ -137,7 +192,13 @@ One last piece of information we will discuss from the summary output is the Mul
     context of the relationship between human freedom and the amount of political
     pressure on media content?
 
-**Insert your answer here**
+**The slope tells us how correlated, or how much of the variability in `hf_score` is explained by `pf_expression_control`. With a value of ~0.34, it tells us there is a small positive correlation between these two variables. $y=5.153687 + 0.349862x$**
+```{r}
+m2 <- lm(hf_score ~ pf_expression_control, data = hfi)
+
+summary(m2)
+```
+
 
 ## Prediction and prediction errors
 
@@ -158,7 +219,7 @@ This line can be used to predict $y$ at any value of $x$. When predictions are m
     for `pf_expression_control`? Is this an overestimate or an underestimate, and
     by how much? In other words, what is the residual for this prediction?
 
-**Insert your answer here**
+**Using the regression line, you could estimate approximately an 8 for pf_score. If we plug in 6.7 to our model explicitly, we can get a value of 7.497749 for pf_score, meaning our residual is approximately -0.50 **
 
 ## Model diagnostics
 
@@ -179,13 +240,13 @@ Notice here that `m1` can also serve as a data set because stored within it are 
 7.  Is there any apparent pattern in the residuals plot? What does this indicate
     about the linearity of the relationship between the two variables?  
 
-**Insert your answer here**
+**The data points align around the 0 residual line, which indicates there is some linearity to the data.**
 
 **Nearly normal residuals**: To check this condition, we can look at a histogram
 
 ```{r hist-res}
 ggplot(data = m1, aes(x = .resid)) +
-  geom_histogram(binwidth = 25) +
+  geom_histogram(binwidth = 1) +
   xlab("Residuals")
 ```
 
@@ -201,14 +262,14 @@ Note that the syntax for making a normal probability plot is a bit different tha
 8.  Based on the histogram and the normal probability plot, does the nearly 
     normal residuals condition appear to be met?
 
-**Insert your answer here**
+**Yes, the residuals are nearly normal**
 
 **Constant variability**:
 
 9.  Based on the residuals vs. fitted plot, does the constant variability condition 
     appear to be met?
 
-**Insert your answer here**
+**Yes, the data variability is roughly constant**
 
 * * *
 
@@ -218,18 +279,34 @@ Note that the syntax for making a normal probability plot is a bit different tha
     correlate with it.. Produce a scatterplot of the two variables and fit a 
     linear model. At a glance, does there seem to be a linear relationship?
 
-**Insert your answer here**
+**Choosing `pf_religion`, we can see another linear trend.**
+```{r}
+ggplot(data = hfi, aes(x = pf_religion, y = pf_score)) +
+  geom_point() +
+  stat_smooth(method = "lm", se = FALSE)
+```
+
 
 -   How does this relationship compare to the relationship between 
     `pf_expression_control` and `pf_score`? Use the $R^2$ values from the two 
     model summaries to compare. Does your independent variable seem to predict
     your dependent one better? Why or why not?
 
-**Insert your answer here**
+**With `pf_religion`, we can find a $R^2$ of 0.2472. Compared to `pf_expression_control`, this is a significantly worse score, indicating a less reliable model.**
+```{r}
+m3 <- lm(pf_score ~ pf_religion, data = hfi)
+
+summary(m3)
+```
+
 
 -   What's one freedom relationship you were most surprised about and why? Display
     the model diagnostics for the regression model analyzing this relationship.
     
 **Insert your answer here**
+```{r}
+
+```
+
 
 * * *
