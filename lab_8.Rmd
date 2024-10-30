@@ -303,9 +303,15 @@ summary(m3)
 -   What's one freedom relationship you were most surprised about and why? Display
     the model diagnostics for the regression model analyzing this relationship.
     
-**Insert your answer here**
+**Not necessarily surprising, but I found it interesting to see a slight negative relationship between government taxes and freedom!**
 ```{r}
+m4 <- lm(pf_score ~ ef_government_tax, data = hfi)
 
+summary(m4)
+
+ggplot(data = hfi, aes(x = ef_government_tax, y = pf_score)) +
+  geom_point() +
+  stat_smooth(method = "lm", se = FALSE)
 ```
 
 
